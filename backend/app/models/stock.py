@@ -1,6 +1,6 @@
 import enum
 
-from app.db.base import Base
+from app.db.session import Base
 from sqlalchemy import Column
 from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy import Integer, String
@@ -17,10 +17,10 @@ class Market(enum.Enum):
 class Stock(Base):
     __tablename__ = "stocks"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    market = Column(SQLAlchemyEnum(Market), index=True)
-    ticker = Column(String, index=True)
+    id = Column(Integer, primary_key=True, index=True, nullable=False)
+    name = Column(String, index=True, unique=True, nullable=False)
+    market = Column(SQLAlchemyEnum(Market), index=True, nullable=False)
+    ticker = Column(String, index=True, unique=True, nullable=False)
     # dart_code = Column(String, index=True)
 
     daily_prices = relationship("DailyPrice", back_populates="stock")
