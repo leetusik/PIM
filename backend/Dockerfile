@@ -24,7 +24,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 ENV UV_HTTP_TIMEOUT=120
 
 # 애플리케이션 소스 코드 복사
-COPY . .
+COPY ./backend .
 
 # 프로젝트와 의존성 설치
 RUN uv pip install -e .
