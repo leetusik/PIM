@@ -36,6 +36,7 @@ class DailyPrice(Base):
     high = Column(Float, index=True)
     low = Column(Float, index=True)
     close = Column(Float, index=True)
-    volume = Column(Integer, index=True)
+    volume = Column(Float, index=True)
+    value = Column(Float, index=True)
 
     stock = relationship("Stock", back_populates="daily_prices")
