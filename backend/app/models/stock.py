@@ -5,7 +5,7 @@ from sqlalchemy import Column
 from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy import Integer, String
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql.schema import ForeignKey
+from sqlalchemy.sql.schema import ForeignKey, UniqueConstraint
 from sqlalchemy.types import Date, Float
 
 
@@ -40,3 +40,7 @@ class DailyPrice(Base):
     value = Column(Float, index=True)
 
     stock = relationship("Stock", back_populates="daily_prices")
+
+    __table_args__ = (
+        UniqueConstraint('stock_id', 'date', name='unique_stock_date'),
+    )
