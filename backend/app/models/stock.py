@@ -38,6 +38,9 @@ class DailyPrice(Base):
     close = Column(Float, index=True)
     volume = Column(Float, index=True)
     value = Column(Float, index=True)
+    ma_50 = Column(Float, index=True)
+    ma_150 = Column(Float, index=True)
+    ma_200 = Column(Float, index=True)
 
     stock = relationship("Stock", back_populates="daily_prices")
 
