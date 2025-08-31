@@ -49,6 +49,15 @@ class DailyPrice(Base):
     week_52_low = Column(Float, index=True)
     is_above_52w_low = Column(Boolean, index=True)
 
+    # Relative Strength (RS) fields
+    roc_252 = Column(Float, index=True)  # Rate of Change 252 days (1 year)
+    roc_126 = Column(Float, index=True)  # Rate of Change 126 days (6 months)
+    roc_63 = Column(Float, index=True)  # Rate of Change 63 days (3 months)
+    roc_21 = Column(Float, index=True)  # Rate of Change 21 days (1 month)
+    rs_momentum = Column(Float, index=True)  # Combined RS momentum score
+    rs_rank = Column(Integer, index=True)  # Rank among all stocks
+    rs_grade = Column(Float, index=True)  # Percentile score (0-100)
+
     stock = relationship("Stock", back_populates="daily_prices")
 
     __table_args__ = (UniqueConstraint("stock_id", "date", name="unique_stock_date"),)
