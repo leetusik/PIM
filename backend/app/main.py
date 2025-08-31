@@ -1,10 +1,13 @@
+from app.api.v1 import stocks
 from fastapi import FastAPI
-
-from app.api.v1.api import api_router
 
 app = FastAPI(title="PIM")
 
-app.include_router(api_router, prefix="/api/v1")
+app.include_router(
+    stocks.router,
+    prefix="/api/v1/stocks",
+    tags=["Stocks"],
+)
 
 
 @app.get("/")

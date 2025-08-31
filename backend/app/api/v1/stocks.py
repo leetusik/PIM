@@ -1,6 +1,6 @@
 from typing import Optional
 
-from app.api.v1 import deps
+from app.api import deps
 from app.crud.stock import get_stocks_with_ma_filter
 from app.schemas.stock import (
     DailyPriceResponse,
