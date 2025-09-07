@@ -1,78 +1,34 @@
-from app.crud.stock import (
-    calculate_moving_averages,
-    calculate_rs_momentum,
-    calculate_rs_rankings,
-    get_stocks,
-)
-from app.db.session import SessionLocal
-
-
-def run_comprehensive_analysis():
-    """
-    Run comprehensive analysis in the correct order:
-    1. Calculate moving averages and basic indicators for all stocks
-    2. Calculate RS momentum for all stocks
-    3. Calculate RS rankings based on the momentum data
-    """
-    db = SessionLocal()
-
-    try:
-        stocks = get_stocks(db)
-        total_stocks = len(stocks)
-
-        # Step 1: Calculate moving averages and basic indicators
-        print(f"Step 1: Calculating moving averages for {total_stocks} stocks...")
-        for i, stock in enumerate(stocks, 1):
-            if i % 100 == 0 or i == total_stocks:
-                print(
-                    f"Processing MA {i}/{total_stocks}: {stock.name} ({stock.ticker})"
-                )
-            calculate_moving_averages(db, stock.id)
-        print("Step 1 completed: Moving averages calculated!")
-
-        # Step 2: Calculate RS momentum for all stocks
-        print(f"\nStep 2: Calculating RS momentum for {total_stocks} stocks...")
-        for i, stock in enumerate(stocks, 1):
-            if i % 100 == 0 or i == total_stocks:
-                print(
-                    f"Processing RS {i}/{total_stocks}: {stock.name} ({stock.ticker})"
-                )
-            calculate_rs_momentum(db, stock.id)
-        print("Step 2 completed: RS momentum calculated!")
-
-        # Step 3: Calculate RS rankings across all stocks
-        print("\nStep 3: Calculating RS rankings...")
-        calculate_rs_rankings(db)
-        print("Step 3 completed: RS rankings calculated!")
-
-        print("\nComprehensive analysis completed successfully!")
-
-    except Exception as e:
-        print(f"Error in comprehensive analysis: {e}")
-        db.rollback()
-    finally:
-        db.close()
+"""
+Comprehensive analysis service - now uses consolidated stock_analysis
+"""
+from app.services.stock_analysis import run_comprehensive_analysis
 
 
 def run_quick_update():
     """
     Quick update that only calculates for the most recent date
-    Useful for daily updates
+    Note: This still uses the old sequential approach - consider updating to batch processing
     """
+    from app.db.session import SessionLocal
+    from app.models.stock import DailyPrice
+    from app.services.stock_analysis import (
+        calculate_moving_averages_batch_parallel,
+        calculate_rs_momentum_batch_parallel,
+        calculate_rs_rankings
+    )
+    from sqlalchemy import func
+    
     db = SessionLocal()
-
+    
     try:
-        from app.models.stock import DailyPrice
-        from sqlalchemy import func
-
         # Get the most recent date
         latest_date = db.query(func.max(DailyPrice.date)).scalar()
         if not latest_date:
             print("No daily price data found")
             return
-
+        
         print(f"Running quick update for {latest_date}...")
-
+        
         # Get stocks that have data for the latest date
         stocks_with_latest_data = (
             db.query(DailyPrice.stock_id)
@@ -80,32 +36,37 @@ def run_quick_update():
             .distinct()
             .all()
         )
-
+        
         stock_ids = [row[0] for row in stocks_with_latest_data]
-
-        print(f"Updating {len(stock_ids)} stocks with latest data...")
-
-        # Update moving averages for stocks with new data
-        for i, stock_id in enumerate(stock_ids, 1):
-            if i % 100 == 0 or i == len(stock_ids):
-                print(f"Processing MA {i}/{len(stock_ids)} stocks...")
-            calculate_moving_averages(db, stock_id)
-
-        # Update RS momentum for stocks with new data
-        for i, stock_id in enumerate(stock_ids, 1):
-            if i % 100 == 0 or i == len(stock_ids):
-                print(f"Processing RS {i}/{len(stock_ids)} stocks...")
-            calculate_rs_momentum(db, stock_id)
-
-        # Calculate RS rankings for the latest date
-        print("Calculating RS rankings...")
-        calculate_rs_rankings(db, latest_date)
-
+        print(f"Found {len(stock_ids)} stocks with latest data...")
+        
+        # For quick updates, we could filter to only process stocks with new data
+        # But for now, let's run the full optimized analysis
+        print("Running optimized batch analysis...")
+        
+        # Step 1: Moving averages
+        print("Step 1: Calculating moving averages...")
+        ma_results = calculate_moving_averages_batch_parallel(max_workers=4)
+        
+        # Step 2: RS momentum
+        print("Step 2: Calculating RS momentum...")
+        rs_results = calculate_rs_momentum_batch_parallel(max_workers=4)
+        
+        # Step 3: RS rankings for the latest date
+        print("Step 3: Calculating RS rankings...")
+        ranking_results = calculate_rs_rankings(latest_date)
+        
         print("Quick update completed!")
-
+        
+        return {
+            'moving_averages': ma_results,
+            'rs_momentum': rs_results,
+            'rs_rankings': ranking_results
+        }
+        
     except Exception as e:
         print(f"Error in quick update: {e}")
-        db.rollback()
+        return {'error': str(e)}
     finally:
         db.close()
 

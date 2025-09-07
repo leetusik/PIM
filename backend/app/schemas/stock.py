@@ -42,12 +42,40 @@ class DailyPriceResponse(BaseModel):
     close: float
     volume: float
     value: Optional[float] = None
+    
+    # Moving Averages
     ma_50: Optional[float] = None
     ma_150: Optional[float] = None
     ma_200: Optional[float] = None
+    ma_200_20d_ago: Optional[float] = None
+    
+    # 52-Week High/Low Analysis
+    week_52_high: Optional[float] = None
+    week_52_low: Optional[float] = None
+    is_ma_200_bullish: Optional[bool] = None
+    is_near_52w_high: Optional[bool] = None
+    is_above_52w_low: Optional[bool] = None
+    
+    # RS (Relative Strength) Analysis
+    roc_252: Optional[float] = Field(None, description="1-year Rate of Change (%)")
+    roc_126: Optional[float] = Field(None, description="6-month Rate of Change (%)")
+    roc_63: Optional[float] = Field(None, description="3-month Rate of Change (%)")
+    roc_21: Optional[float] = Field(None, description="1-month Rate of Change (%)")
+    rs_momentum: Optional[float] = Field(None, description="RS Momentum Score")
+    rs_rank: Optional[int] = Field(None, description="RS Rank (1 = best)")
+    rs_grade: Optional[float] = Field(None, description="RS Grade (0-100, 100 = best)")
     
     class Config:
         from_attributes = True
+
+
+class RSAnalysisSummary(BaseModel):
+    """Summary of RS analysis for quick reference"""
+    rs_grade: Optional[float] = Field(None, description="RS Grade (0-100, 100 = best)")
+    rs_rank: Optional[int] = Field(None, description="RS Rank (1 = best)")
+    rs_momentum: Optional[float] = Field(None, description="RS Momentum Score")
+    roc_252: Optional[float] = Field(None, description="1-year performance (%)")
+    is_trend_template: Optional[bool] = Field(None, description="Meets trend template criteria")
 
 
 class StockWithLatestPrice(BaseModel):
@@ -56,6 +84,7 @@ class StockWithLatestPrice(BaseModel):
     market: Market
     ticker: str
     latest_price: Optional[DailyPriceResponse] = None
+    rs_summary: Optional[RSAnalysisSummary] = None
     
     class Config:
         from_attributes = True
@@ -66,3 +95,21 @@ class StockScreenResponse(BaseModel):
     total: int
     page: int
     limit: int
+
+
+class PipelineStepResult(BaseModel):
+    """Result of a single pipeline step"""
+    step_name: str
+    success: bool
+    duration_seconds: float
+    message: str
+    details: Optional[dict] = None
+
+
+class DataPipelineResponse(BaseModel):
+    """Response for comprehensive data pipeline operations"""
+    pipeline_type: str
+    success: bool
+    total_duration_seconds: float
+    steps: list[PipelineStepResult]
+    summary: dict

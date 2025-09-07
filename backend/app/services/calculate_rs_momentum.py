@@ -1,28 +1,15 @@
-from app.crud.stock import calculate_rs_momentum, get_stocks
-from app.db.session import SessionLocal
+"""
+RS momentum calculation service - now uses consolidated stock_analysis
+"""
+from app.services.stock_analysis import calculate_rs_momentum_batch_parallel
 
 
-def populate_all_rs_momentum():
-    """Calculate and populate RS momentum for all stocks"""
-    db = SessionLocal()
-
-    try:
-        stocks = get_stocks(db)
-        total_stocks = len(stocks)
-
-        print(f"Calculating RS momentum for {total_stocks} stocks...")
-
-        for i, stock in enumerate(stocks, 1):
-            print(f"Processing {i}/{total_stocks}: {stock.name} ({stock.ticker})")
-            calculate_rs_momentum(db, stock.id)
-
-        print("RS momentum calculation completed!")
-
-    except Exception as e:
-        print(f"Error calculating RS momentum: {e}")
-        db.rollback()
-    finally:
-        db.close()
+def populate_all_rs_momentum(max_workers: int = 4, chunk_size=None):
+    """Calculate and populate RS momentum for all stocks using optimized batch processing"""
+    return calculate_rs_momentum_batch_parallel(
+        max_workers=max_workers,
+        chunk_size=chunk_size
+    )
 
 
 if __name__ == "__main__":

@@ -1,74 +1,69 @@
-from app.crud.stock import calculate_rs_rankings, get_stocks_with_trend_template_filter
-from app.db.session import SessionLocal
+"""
+RS rankings and trend template filtering - now uses consolidated stock_analysis
+"""
+from app.services.stock_analysis import (
+    calculate_rs_rankings,
+    get_stocks_with_trend_template_filter
+)
 
 
 def calculate_daily_rs_rankings(target_date: str = None):
     """Calculate RS rankings for all stocks for a specific date"""
-    db = SessionLocal()
-
-    try:
-        print("Starting RS rankings calculation...")
-        calculate_rs_rankings(db, target_date)
+    print("Starting RS rankings calculation...")
+    result = calculate_rs_rankings(target_date)
+    
+    if result['success']:
         print("RS rankings calculation completed!")
-
-    except Exception as e:
-        print(f"Error calculating RS rankings: {e}")
-        db.rollback()
-    finally:
-        db.close()
+    else:
+        print(f"Error calculating RS rankings: {result['error']}")
+    
+    return result
 
 
 def find_trend_template_stocks(target_date: str = None, min_rs_grade: float = 70.0):
     """Find stocks that match the trend template criteria using efficient funnel filtering"""
-    db = SessionLocal()
-
-    try:
-        print("Starting trend template stock filtering...")
-
-        # Use the efficient funnel-based filtering
-        trend_stocks = get_stocks_with_trend_template_filter(
-            db=db,
-            target_date=target_date,
-            min_price=20.0,  # Minimum price filter
-            min_rs_grade=min_rs_grade,  # RS grade >= 70
-            limit=100,
-        )
-
-        print(f"\nFound {len(trend_stocks)} stocks matching trend template:")
-        for stock in trend_stocks[:10]:  # Show top 10
-            # Get the daily price data for display
-            from app.models.stock import DailyPrice
-
-            latest_price = (
-                db.query(DailyPrice)
-                .filter(
-                    DailyPrice.stock_id == stock.id,
-                    DailyPrice.date
-                    == (
-                        target_date
-                        or db.query(DailyPrice.date)
-                        .order_by(DailyPrice.date.desc())
-                        .first()[0]
-                    ),
+    print("Starting trend template stock filtering...")
+    
+    # Use the consolidated service for filtering
+    trend_stocks = get_stocks_with_trend_template_filter(
+        target_date=target_date,
+        min_price=20.0,  # Minimum price filter
+        min_rs_grade=min_rs_grade,  # RS grade >= 70
+        limit=100,
+    )
+    
+    print(f"\nFound {len(trend_stocks)} stocks matching trend template:")
+    
+    # Display top 10 results
+    if trend_stocks:
+        from app.db.session import SessionLocal
+        from app.models.stock import DailyPrice
+        
+        db = SessionLocal()
+        try:
+            for stock in trend_stocks[:10]:
+                latest_price = (
+                    db.query(DailyPrice)
+                    .filter(
+                        DailyPrice.stock_id == stock.id,
+                        DailyPrice.date == (
+                            target_date or 
+                            db.query(DailyPrice.date).order_by(DailyPrice.date.desc()).first()[0]
+                        ),
+                    )
+                    .first()
                 )
-                .first()
-            )
-
-            if latest_price:
-                print(
-                    f"  {stock.name} ({stock.ticker}): "
-                    f"Price: {latest_price.close:.0f}, "
-                    f"RS Grade: {latest_price.rs_grade:.1f}"
-                )
-
-        return trend_stocks
-
-    except Exception as e:
-        print(f"Error finding trend template stocks: {e}")
-        db.rollback()
-        return []
-    finally:
-        db.close()
+                
+                if latest_price:
+                    print(
+                        f"  {stock.name} ({stock.ticker}): "
+                        f"Price: {latest_price.close:.0f}, "
+                        f"RS Grade: {latest_price.rs_grade:.1f}"
+                    )
+        finally:
+            db.close()
+    
+    return trend_stocks
 
 
 if __name__ == "__main__":
